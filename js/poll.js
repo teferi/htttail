@@ -3,6 +3,16 @@ load = function(){
     timeout = setTimeout(check, 100);
 }
 
+parse_response = function(text){
+    var root = document.createElement("div");
+    root.innerHTML = text;
+    var elems = Array();
+    for(var i=root.childNodes.length-1; i>=0; i--) {
+        elems.push(root.childNodes[i]);
+    }
+    return elems;
+}
+
 var check = function() {
     var xhr = new XMLHttpRequest();
 
@@ -17,7 +27,11 @@ var check = function() {
             if (xhr.status == 200) {
                 var resp = xhr.responseText;
                 if (resp !== "") {
-                    document.body.innerHTML = resp + document.body.innerHTML;
+                    var elems = parse_response(resp);
+                    for (var i=0; i<elems.length; i++){
+                        document.body.insertBefore(elems[i], document.body.firstChild);
+                    }
+                    //document.body.innerHTML = resp + document.body.innerHTML;
                 }
             }
             load();
