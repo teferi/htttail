@@ -1,0 +1,5 @@
+#python compiled files
+*.pyc
+
+#test log file
+log.log
