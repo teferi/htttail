@@ -6,17 +6,15 @@ from twisted.web.server import NOT_DONE_YET
 
 from jinja2 import Environment, FileSystemLoader, Markup
 
-
 from datetime import datetime
 from dateutil.parser import parse as parse_date
-from threading import Thread, Lock, RLock, Event
+
+from threading import Thread, Lock, Event
 
 from tailer import Tailer
+
 import os.path
-
 import time
-
-datefmt = "%a, %d %b %Y %H:%M:%S %Z"
 
 class LoggerThread(Thread):
     def __init__(self, f, timeout=None):
@@ -24,11 +22,11 @@ class LoggerThread(Thread):
 
         self.tailer = Tailer(f, timeout)
         self.elock = Lock()
-        self.rlock = RLock()
+        self.rlock = Lock()
 
         self.go = True
         self.loglines = []
-        self.events = []
+        self.event = Event()
 
     def run(self):
         for lines in self.tailer:
@@ -36,18 +34,15 @@ class LoggerThread(Thread):
                 continue
             with self.rlock:
                 lines = lines[-50:]
-                lines = [(parse_date(line[:30], fuzzy=True), line) for line in lines]
+                lines = [(parse_date(line[:30], fuzzy=True, ignoretz=True), line) for line in lines]
                 self.loglines = self.loglines[len(lines):] + lines
             with self.elock:
-                if self.events:
-                    map(lambda x: x.set(), self.events)
-                    self.events = []
+                self.event.set()
+                self.event.clear()
 
     def add_event(self):
-        e = Event()
         with self.elock:
-            self.events.append(e)
-        return e
+            return self.event
 
     def lines(self):
         with self.rlock:
@@ -80,7 +75,7 @@ class UpdaterThread(Thread):
     def run(self):
         logger.add_event().wait()
 
-        date = parse_date(self.request.args['date'][0][:30], fuzzy=True)
+        date = parse_date(self.request.args['date'][0][:30], fuzzy=True, ignoretz=True)
         lines = filter(lambda x: x[0]>date, logger.lines())
 
         templ = env.get_template('part.html')
@@ -93,14 +88,6 @@ class Upd(resource.Resource):
         u = UpdaterThread(request,)
         u.daemon = True
         u.start()
-        #event = logger.add_event()
-        #event.wait()
-
-        #date = parse_date(request.args['date'][0][:30], fuzzy=True)
-        #lines = filter(lambda x: x[0]>date, logger.lines())
-
-        #templ = env.get_template('part.html')
-        #return str(templ.render( {'items':map(_fmt_line, (reversed(lines)))} ))
         return NOT_DONE_YET
 
 root = Root()
@@ -109,7 +96,7 @@ root.putChild('js', static.File(os.path.abspath("js")))
 root.putChild('upd', Upd())
 
 env = Environment(loader=FileSystemLoader('templates/'))
-filename = "/var/log/test.log"
+filename = "log.log"
 logger = LoggerThread(filename, 10)
 logger.daemon = False
 #logger.start()
@@ -122,5 +109,3 @@ site = server.Site(root)
 
 reactor.listenTCP(3001, site)
 reactor.run()
-while True:
-    logger.join(10)
