@@ -54,10 +54,7 @@ def _fmt_line(line):
 class Root(resource.Resource):
     isLeaf = False
     def render_GET(self, request):
-        if not logger.isAlive():
-            logger.start()
         lines = logger.lines()
-
         templ = env.get_template('index.html')
         return str(templ.render( {'items':map(_fmt_line, (logger.lines()))} ))
 
@@ -96,8 +93,8 @@ root.putChild('upd', Upd())
 env = Environment(loader=FileSystemLoader('templates/'))
 filename = "log.log"
 logger = LoggerThread(filename, 10)
-logger.daemon = False
-#logger.start()
+logger.daemon = True
+logger.start()
 
 site = server.Site(root)
 
