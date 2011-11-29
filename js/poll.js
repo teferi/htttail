@@ -1,6 +1,6 @@
-load = function(){
-//    setInterval(check, 2000);
-    timeout = setTimeout(check, 100);
+load = function(timeout){
+    timeout = timeout || 100;
+    var tid = setTimeout(check, timeout);
 }
 
 parse_response = function(text){
@@ -15,12 +15,7 @@ parse_response = function(text){
 
 var check = function() {
     var xhr = new XMLHttpRequest();
-
     var first = document.body.getElementsByTagName("p")[0].getElementsByTagName("b")[0].innerHTML;
-
-    //var da = first.split("GMT:")[0];
-
-    xhr.open("GET", "/upd?date=" + first, true);
 
     xhr.onreadystatechange = function(){
         if (xhr.readyState == 4) {
@@ -31,12 +26,16 @@ var check = function() {
                     for (var i=0; i<elems.length; i++){
                         document.body.insertBefore(elems[i], document.body.firstChild);
                     }
-                    //document.body.innerHTML = resp + document.body.innerHTML;
                 }
             }
-            load();
+            var timeout;
+            if (xhr.status == 0) {
+                timeout = 5000;
+            }
+            load(timeout);
         }
     };
 
+    xhr.open("GET", "/upd?date=" + first, true);
     xhr.send(null);
 }
