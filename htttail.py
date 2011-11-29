@@ -8,7 +8,7 @@ from jinja2 import Environment, FileSystemLoader, Markup
 
 from datetime import datetime
 from dateutil.parser import parse as parse_date
-
+from itertools import repeat
 from threading import Thread, Lock, Event
 
 from tailer import Tailer
@@ -33,8 +33,7 @@ class LoggerThread(Thread):
             if lines is None:
                 continue
             with self.rlock:
-                lines = lines[-50:]
-                lines = [(parse_date(line[:30], fuzzy=True, ignoretz=True), line) for line in lines]
+                lines = zip(repeat(datetime.now()), lines[-50:])
                 self.loglines = self.loglines[len(lines):] + lines
             with self.elock:
                 self.event.set()
@@ -73,9 +72,8 @@ class UpdaterThread(Thread):
         self.request = request
 
     def run(self):
+        date = datetime.now()
         logger.add_event().wait()
-
-        date = parse_date(self.request.args['date'][0][:30], fuzzy=True, ignoretz=True)
         lines = filter(lambda x: x[0]>date, logger.lines())
 
         templ = env.get_template('part.html')
