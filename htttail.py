@@ -87,7 +87,9 @@ class Upd(resource.Resource):
 
 root = Root()
 
-root.putChild('js', static.File(os.path.abspath("js")))
+js = static.File(os.path.abspath("js"))
+js.directoryListing = lambda : resource.ForbiddenResource()
+root.putChild('js', js)
 root.putChild('upd', Upd())
 
 env = Environment(loader=FileSystemLoader('templates/'))
