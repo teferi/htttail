@@ -8,6 +8,7 @@ from jinja2 import Environment, FileSystemLoader, Markup
 
 from datetime import datetime
 from dateutil.parser import parse as parse_date
+
 from itertools import repeat
 from threading import Thread, Lock, Event
 
