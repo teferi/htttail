@@ -6,7 +6,7 @@ __all__ = ['Tailer']
 has_inotify, has_kqueue = True, True
 
 try:
-    from pyinotify import WatchManager, Notifier, ThreadedNotifier, EventsCodes, ProcessEvent, IN_MODIFY
+    from pyinotify import WatchManager, Notifier, ProcessEvent, IN_MODIFY
 except ImportError:
     has_inotify = False
 
@@ -21,6 +21,7 @@ if not any([has_inotify, has_kqueue]):
 
 class DoesNotExist(Exception):
     pass
+
 
 class BaseTailer(object):
     def __init__(self, f, callback=None, timeout=None):
@@ -40,7 +41,8 @@ class BaseTailer(object):
         Should be implemented in a subclass
         """
         raise NotImplemented
-        
+
+
 class InoTailer(BaseTailer):
     def __init__(self, file, should_read=True, callback=None, timeout=None):
         super(InoTailer, self).__init__(file, callback, timeout)
@@ -57,7 +59,7 @@ class InoTailer(BaseTailer):
             pass
         if callable(self.callback):
             setattr(Watcher, 'process_IN_MODIFY', self.callback)
-        mask = IN_MODIFY 
+        mask = IN_MODIFY
         self.wm = WatchManager()
         self.notifier = Notifier(self.wm, Watcher())
         self.wm.add_watch(self.file.name, mask,)
@@ -91,7 +93,9 @@ class InoTailer(BaseTailer):
             timeout = self.timeout
         self.notifier.check_events(timeout)
 
+
 class KQTailer(BaseTailer):
+
     def __init__(self, file, callback=None, timeout=None):
         super(KQTailer, self).__init__(file, callback, timeout)
 
@@ -102,8 +106,9 @@ class KQTailer(BaseTailer):
                 raise DoesNotExist("Can't find %s. It does not seem to exist" % self.file)
             self.file = open(self.file)
         self.kq = kqueue()
-        self.ke = kevent(self.file, filter=select.KQ_FILTER_READ, 
-                    flags=select.KQ_EV_ADD)
+        self.ke = kevent(self.file, filter=select.KQ_FILTER_READ,
+                         flags=select.KQ_EV_ADD)
+
     def check_once(self):
         klist = self.kq.control((self.ke,), 1, self.timeout)
         if klist:
@@ -119,14 +124,9 @@ class KQTailer(BaseTailer):
         timeout = None
         if with_timeout:
             timeout = self.timeout
-        klist = self.kq.control((self.ke,), 1, timeout)
-        
-
-        
-
+        self.kq.control((self.ke,), 1, timeout)
 
 if has_inotify:
     Tailer = InoTailer
 elif has_kqueue:
     Tailer = KQTailer
-
